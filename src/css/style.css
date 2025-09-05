@@ -1,0 +1,47 @@
+body{
+    background-color: rgb(21, 21, 21);
+}
+
+.col{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width:90px;
+    height:90px;
+    
+}
+
+.chessboard{
+    width:55%;
+    height:55%;
+    border-radius:10%;
+}
+
+.row-0 .square-0, .row-1 .square-0{
+    background-color: #CCAF7B;
+}
+
+.row-0 .square-1, .row-1 .square-1{
+    background-color:#805734;
+}
+.piece:hover{
+    cursor: grab;
+}
+.piece:active{
+    cursor:grabbing;
+}
+
+.dragged_piece{
+    opacity: 100%;
+}
+
+.right_click{
+    background-color:red;
+}
+
+.eval-bar{
+    height: 720px;
+    width:20px;
+    background-color: #805734;
+    margin-right: 2%;
+}

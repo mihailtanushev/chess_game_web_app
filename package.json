@@ -1,0 +1,16 @@
+{
+  "name": "chess_game_web_app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@lichess-org/stockfish-web": "^0.0.13",
+    "stockfish": "^17.1.0"
+  }
+}
