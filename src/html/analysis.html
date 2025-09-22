@@ -1,0 +1,124 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous"> 
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+    <div class="container d-flex justify-content-start align-items-center mt-5">
+
+        <div class="chessboard">
+            
+            <div class="row d-flex justify-content-center row-0">
+                <div class="col square square-0" id="a8"></div>
+                <div class="col square square-1" id="b8"></div>
+                <div class="col square square-0" id="c8"></div>
+                <div class="col square square-1" id="d8"></div>
+                <div class="col square square-0" id="e8"></div>
+                <div class="col square square-1" id="f8"></div>
+                <div class="col square square-0" id="g8"></div>
+                <div class="col square square-1" id="h8"></div>
+            </div>
+
+            
+            <div class="row d-flex justify-content-center row-1">
+                <div class="col square square-1" id="a7"></div>
+                <div class="col square square-0" id="b7"></div>
+                <div class="col square square-1" id="c7"></div>
+                <div class="col square square-0" id="d7"></div>
+                <div class="col square square-1" id="e7"></div>
+                <div class="col square square-0" id="f7"></div>
+                <div class="col square square-1" id="g7"></div>
+                <div class="col square square-0" id="h7"></div>
+            </div>
+
+            
+            <div class="row d-flex justify-content-center row-0">
+                <div class="col square square-0" id="a6"></div>
+                <div class="col square square-1" id="b6"></div>
+                <div class="col square square-0" id="c6"></div>
+                <div class="col square square-1" id="d6"></div>
+                <div class="col square square-0" id="e6"></div>
+                <div class="col square square-1" id="f6"></div>
+                <div class="col square square-0" id="g6"></div>
+                <div class="col square square-1" id="h6"></div>
+            </div>
+
+            
+            <div class="row d-flex justify-content-center row-1">
+                <div class="col square square-1" id="a5"></div>
+                <div class="col square square-0" id="b5"></div>
+                <div class="col square square-1" id="c5"></div>
+                <div class="col square square-0" id="d5"></div>
+                <div class="col square square-1" id="e5"></div>
+                <div class="col square square-0" id="f5"></div>
+                <div class="col square square-1" id="g5"></div>
+                <div class="col square square-0" id="h5"></div>
+            </div>
+
+            
+            <div class="row d-flex justify-content-center row-0">
+                <div class="col square square-0" id="a4"></div>
+                <div class="col square square-1" id="b4"></div>
+                <div class="col square square-0" id="c4"></div>
+                <div class="col square square-1" id="d4"></div>
+                <div class="col square square-0" id="e4"></div>
+                <div class="col square square-1" id="f4"></div>
+                <div class="col square square-0" id="g4"></div>
+                <div class="col square square-1" id="h4"></div>
+            </div>
+
+            
+            <div class="row d-flex justify-content-center row-1">
+                <div class="col square square-1" id="a3"></div>
+                <div class="col square square-0" id="b3"></div>
+                <div class="col square square-1" id="c3"></div>
+                <div class="col square square-0" id="d3"></div>
+                <div class="col square square-1" id="e3"></div>
+                <div class="col square square-0" id="f3"></div>
+                <div class="col square square-1" id="g3"></div>
+                <div class="col square square-0" id="h3"></div>
+            </div>
+
+            
+            <div class="row d-flex justify-content-center row-0">
+                <div class="col square square-0" id="a2"></div>
+                <div class="col square square-1" id="b2"></div>
+                <div class="col square square-0" id="c2"></div>
+                <div class="col square square-1" id="d2"></div>
+                <div class="col square square-0" id="e2"></div>
+                <div class="col square square-1" id="f2"></div>
+                <div class="col square square-0" id="g2"></div>
+                <div class="col square square-1" id="h2"></div>
+            </div>
+
+            
+            <div class="row d-flex justify-content-center row-1">
+                <div class="col square square-1" id="a1"></div>
+                <div class="col square square-0" id="b1"></div>
+                <div class="col square square-1" id="c1"></div>
+                <div class="col square square-0" id="d1"></div>
+                <div class="col square square-1" id="e1"></div>
+                <div class="col square square-0" id="f1"></div>
+                <div class="col square square-1" id="g1"></div>
+                <div class="col square square-0" id="h1"></div>
+            </div>
+        </div>
+
+    <div class="wrapper ms-5">
+        <div class="eval-best-move ms-5">
+            <div class="eval mb-5">Evaluation:</div>
+            <div class="best_move">Best move:</div>
+    </div>
+</div>
+
+</body>
+
+<script type="module" src="../js/game.js"></script>
+<script type ="module" src="../js/analysis.js"></script>
+
+</html>

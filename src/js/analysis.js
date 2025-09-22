@@ -1,140 +1,132 @@
-// ======== Stockfish (WASM) hookup ========
+const engine = new Worker('../engine/stockfish-17.1-lite-single-03e3232.js');
 
-// Path to the engine from /src/html/quick_analysis.html
-const STOCKFISH_PATH = '../../engine/stockfish-17.1-lite-single-03e3232.js';
+const bestEl = document.querySelector('.best_move');
+const evalEl = document.querySelector('.eval');
 
-// Create the worker
-const engine = new Worker(STOCKFISH_PATH);
-
-// UI elements
-const logEl = document.getElementById('sf-log');
-const bestEl = document.getElementById('bestmove');
-const analyzeBtn = document.getElementById('analyze-btn');
-
-// Small helpers
-function log(line) {
-  console.log('[SF]', line);
+function setBest(t) {
+  if (bestEl) {
+    bestEl.textContent = 'Best move: ' + t;
+  }
 }
-function send(cmd) {
-  log('> ' + cmd);
-  engine.postMessage(cmd);
+function setEval(t) {
+  if (evalEl) {
+    evalEl.textContent = 'Evaluation: ' + t;
+  }
 }
 
-// Receive messages from the engine
-engine.onmessage = (e) => {
-  const line = typeof e.data === 'string' ? e.data : (e.data?.data ?? '');
-  if (!line) return;
-  log(line);
+function send(s) {
+  engine.postMessage(s);
+}
 
-  // Parse "bestmove"
-  if (line.startsWith('bestmove ')) {
-    const best = line.split(' ')[1];
-    if (bestEl) bestEl.textContent = `Best move: ${best}`;
+function getFEN() {
+  if (window.__chess && typeof window.__chess.fen === 'function') {
+    return window.__chess.fen();
+  }
+  return 'startpos';
+}
+
+let ready = false;
+let analyzing = false;
+let rerun = false;
+let lastMs = 800;
+
+engine.onmessage = function (e) {
+  let line;
+  if (typeof e.data === 'string') {
+    line = e.data;
+  } else if (e.data && typeof e.data.data === 'string') {
+    line = e.data.data;
+  } else {
+    return;
   }
 
-  // Optional: show simple eval as it searches
-  // Look for: info depth ... score cp X or score mate Y
-  if (line.startsWith('info ')) {
-    const mMate = line.match(/\bscore mate (-?\d+)/);
-    const mCp   = line.match(/\bscore cp (-?\d+)/);
-    if (mMate) {
-      const mateIn = parseInt(mMate[1], 10);
-      bestEl.textContent = `Eval: mate in ${mateIn}`;
-    } else if (mCp) {
-      const centipawns = parseInt(mCp[1], 10);
-      const pawns = (centipawns / 100).toFixed(2);
-      bestEl.textContent = `Eval: ${pawns}`;
+  if (line === 'uciok') {
+    send('isready');
+    return;
+  }
+
+  if (line === 'readyok') {
+    if (!ready) {
+      ready = true;
+      analyze(900);
     }
+    return;
+  }
+
+  if (line.indexOf('info ') === 0) {
+    const mMate = line.match(/\bscore mate (-?\d+)/);
+    if (mMate) {
+      const nMate = Math.abs(parseInt(mMate[1], 10));
+      setEval('mate in ' + nMate);
+      return;
+    }
+    const mCp = line.match(/\bscore cp (-?\d+)/);
+    if (mCp) {
+      const cp = parseInt(mCp[1], 10);
+      const pawns = (cp / 100).toFixed(2);
+      if (cp >= 0) {
+        setEval('+' + pawns);
+      } else {
+        setEval(pawns);
+      }
+      return;
+    }
+  }
+
+  if (line.indexOf('bestmove') === 0) {
+    analyzing = false;
+
+    if (rerun) {
+      rerun = false;
+      analyze(lastMs);
+      return;
+    }
+
+    const parts = line.split(' ');
+    let best = '';
+    if (parts.length > 1) {
+      best = parts[1];
+    }
+    setBest(best);
+    return;
   }
 };
 
-// UCI handshake: tell engine who we are, wait for "uciok", then "isready" → "readyok"
-async function initUCI() {
-  await new Promise((resolve) => {
-    let sawUciOk = false;
-    const handler = (e) => {
-      const line = typeof e.data === 'string' ? e.data : (e.data?.data ?? '');
-      if (!line) return;
-      if (line === 'uciok') {
-        sawUciOk = true;
-        send('isready');
-      } else if (sawUciOk && line === 'readyok') {
-        engine.removeEventListener('message', handler);
-        resolve();
-      }
-    };
-    engine.addEventListener('message', handler);
-    send('uci');           // identify as UCI engine
-    // (Optional) set some options here, e.g. Threads:
-    // send('setoption name Threads value 2');
-  });
+function init() {
+  send('uci');
 }
 
-// Build FEN from your DOM board.
-// Assumptions:
-//  - Each square div has class "square" and contains 0/1 <img class="piece">.
-//  - Image file names end with ".../wP.png", ".../bQ.png", etc.
-function currentBoardFEN() {
-  const rows = document.querySelectorAll('.chessboard .row');
-  if (!rows || rows.length !== 8) {
-    // Fallback: start position FEN
-    return 'rnbrkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBRKBNR w - - 0 1'; // (Your initial DOM is the real start position; this is just a guard.)
+function startSearch(fen, ms) {
+  analyzing = true;
+  setBest('Analyzing…');
+  setEval('');
+  if (fen === 'startpos') {
+    send('position startpos');
+  } else {
+    send('position fen ' + fen);
+  }
+  send('go movetime ' + ms);
+}
+
+function analyze(ms) {
+  if (!ready) {
+    return;
+  }
+  lastMs = ms || 800; 
+  const fen = getFEN();
+
+  if (analyzing) {
+    rerun = true;
+    send('stop');
+    return;
   }
 
-  const fenRows = [];
-  rows.forEach(row => {
-    const squares = row.querySelectorAll('.square');
-    let empties = 0;
-    let fenRow = '';
-    squares.forEach(square => {
-      const img = square.querySelector('img.piece');
-      if (!img) {
-        empties++;
-      } else {
-        if (empties > 0) {
-          fenRow += String(empties);
-          empties = 0;
-        }
-        // Map from filename tail ".../wP.png" or ".../bN.png" → FEN letter
-        const m = img.src.match(/\/([wb])([KQRBNP])\.png$/);
-        if (m) {
-          const color = m[1];     // 'w' or 'b'
-          const piece = m[2];     // 'K','Q','R','B','N','P'
-          const table = { K:'k', Q:'q', R:'r', B:'b', N:'n', P:'p' };
-          let p = table[piece];   // lowercase by default
-          if (color === 'w') p = p.toUpperCase();
-          fenRow += p;
-        } else {
-          empties++; // if unexpected, count it as empty
-        }
-      }
-    });
-    if (empties > 0) fenRow += String(empties);
-    fenRows.push(fenRow);
+  startSearch(fen, lastMs);
+}
+
+window.addEventListener('DOMContentLoaded', function () {
+  init();
+  window.addEventListener('position-changed', function () {
+    analyze(700);
   });
-
-  const placement = fenRows.join('/');
-  // We don’t track side-to-move/castling/ep/half/full accurately yet.
-  // Using "w - - 0 1" is okay for analysis.
-  return `${placement} w - - 0 1`;
-}
-
-// Ask Stockfish to analyze the current board for N milliseconds.
-function analyze(ms = 1000) {
-  const fen = (window.__chess && typeof window.__chess.fen === 'function')
-    ? window.__chess.fen()
-    : currentBoardFEN(); // fallback if chess.js isn't loaded
-  send(`position fen ${fen}`);
-  send(`go movetime ${ms}`);
-}
-
-window.addEventListener('position-changed', () => analyze(1000));
-// Wire up
-window.addEventListener('DOMContentLoaded', async () => {
-  log('Starting UCI handshake…');
-  await initUCI();
-  log('Engine is ready.');
-  if (analyzeBtn) {
-    analyzeBtn.addEventListener('click', () => analyze(1500));
-  }
 });

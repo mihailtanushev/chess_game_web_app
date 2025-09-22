@@ -1,90 +1,142 @@
-// Use ESM build of chess.js from a CDN
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
+import { joinRoom, onOpponentMove, sendMove } from './multiplayer.js';
 
-// Single game instance; expose it so analysis.js can read its FEN
 const game = new Chess();
-window.__chess = game; // (read-only use in analysis.js)
+window.__chess = game;
 
-// Image base relative to quick_analysis.html
-const IMG_BASE = '../../img/chesspieces/wikipedia';
+const IMG_BASE = '../img/chesspieces/wikipedia';
 
-// Map FEN characters to your image filenames
 const PIECE_TO_FILE = {
-  'p': 'bP.png', 'r': 'bR.png', 'n': 'bN.png', 'b': 'bB.png', 'q': 'bQ.png', 'k': 'bK.png',
-  'P': 'wP.png', 'R': 'wR.png', 'N': 'wN.png', 'B': 'wB.png', 'Q': 'wQ.png', 'K': 'wK.png',
+  'p':'bP.png','r':'bR.png','n':'bN.png','b':'bB.png','q':'bQ.png','k':'bK.png',
+  'P':'wP.png','R':'wR.png','N':'wN.png','B':'wB.png','Q':'wQ.png','K':'wK.png',
 };
 
-// Render the entire board from a FEN (safe for castling, captures, promotion, en-passant)
-function render(fen) {
-  const placement = fen.split(' ')[0];      // 'rnbqkbnr/pppppppp/8/...'
-  const ranks = placement.split('/');       // rank8 -> rank1
-  // clear all squares
-  document.querySelectorAll('.square').forEach(sq => (sq.innerHTML = ''));
 
-  const files = ['a','b','c','d','e','f','g','h'];
-  for (let r = 0; r < 8; r++) {
-    let fileIdx = 0;
-    for (const ch of ranks[r]) {
-      if (/\d/.test(ch)) {                  // number = that many empty squares
-        fileIdx += parseInt(ch, 10);
-        continue;
-      }
-      // place the piece
-      const file = files[fileIdx++];
-      const rank = 8 - r;                   // FEN rank 8..1
-      const id = `${file}${rank}`;          // e.g., 'e2'
-      const sq = document.getElementById(id);
-      if (!sq) continue;
-
-      const img = document.createElement('img');
-      img.className = 'piece';
-      img.src = `${IMG_BASE}/${PIECE_TO_FILE[ch]}`;
-      img.draggable = true;                 // enable drag
-      sq.appendChild(img);
+function render(fen){
+    const position = fen.split(' ')[0];
+    const ranks = position.split('/');
+    const squares = document.querySelectorAll('.square');
+    for(let i = 0; i < 64; i++){
+        squares[i].innerHTML = '';
     }
-  }
+
+    for(let i = 0; i < 8; i++){
+        let rank = ranks[i];
+        let empties = 0;
+        
+        for(let j = 0; j < rank.length; j++){
+            if(rank[j] >= '1' && rank[j] <= '8'){
+                empties += parseInt(rank[j], 10);
+                continue;
+            }
+
+            if(empties > 7){
+                continue;
+            }
+            
+             let file_name = PIECE_TO_FILE[rank[j]];
+             const square_index = i * 8 + empties;
+             empties++;
+             
+             let img = document.createElement('img');
+             img.className = 'piece';
+             img.src = IMG_BASE + '/' + file_name;
+             img.draggable = true;
+             squares[square_index].appendChild(img);
+        }
+    }
 }
 
-// Initial draw
 render(game.fen());
+window.__render = render;
 
-// Drag & drop (legal-move checked by chess.js)
-let dragFrom = null;
+const urlRoom = new URLSearchParams(location.search).get('room');
+if (urlRoom) {
+  joinRoom(urlRoom);
+} else {
+  const code = prompt('Enter room code for 1v1 (e.g., ABC123):');
+  if (code) joinRoom(code.trim());
+}
 
-// Start dragging: remember the source square (like 'e2')
-document.addEventListener('dragstart', (e) => {
-  const piece = e.target.closest('img.piece');
-  if (!piece) return;
-  const sq = piece.closest('.square');
-  if (!sq) return;
-
-  dragFrom = sq.id;
-  e.dataTransfer.setData('text/plain', dragFrom); // backup
+onOpponentMove((moveObj, fen) => {
+  try {
+    if (fen) {
+      game.load(fen);
+      render(fen);
+      return;
+    }
+    if (moveObj) {
+      game.move(moveObj);
+      render(game.fen());
+    }
+  } catch (e) {
+    console.warn('Move failed:', e);
+  }
 });
 
-// Allow dropping on board squares
-document.querySelectorAll('.square').forEach((sq) => {
-  sq.addEventListener('dragover', (e) => e.preventDefault());
 
-  sq.addEventListener('drop', (e) => {
-    e.preventDefault();
-    const from = dragFrom || e.dataTransfer.getData('text/plain');
-    const to = sq.id;
+function is_piece(target){
+    return target.classList.contains('piece');
+}
 
-    // Try to make the move; chess.js enforces ALL rules.
-    // Autopromote to queen for now (simple demo).
-    const move = game.move({ from, to, promotion: 'q' });
+let from = null;
+let to = null;
+const pieces = document.querySelectorAll('.piece');
 
-    if (move) {
-      // Legal move → re-render from true game state
-      render(game.fen());
-
-      // Tell the rest of the app (analysis.js) that the position changed
-      window.dispatchEvent(new CustomEvent('position-changed', { detail: { fen: game.fen() } }));
-    } else {
-      // Illegal → do nothing (the old position remains shown)
-      // Optional: add a quick visual shake here
+document.addEventListener('dragstart', (e) =>{
+    const target = e.target;
+    if (!is_piece(target)){
+        return;
     }
-    dragFrom = null;
-  });
+
+    const square = target.closest('.square');
+    from = square.id;
+});
+
+document.addEventListener('dragend', () =>{
+    from = null;
+    to = null;
+})
+
+const squares = document.querySelectorAll('.square');
+
+for(let i = 0; i < 64; i++){
+    const square = squares[i];
+
+    square.addEventListener('dragover',(e) =>{
+        e.preventDefault();
+    });
+
+    square.addEventListener('drop', (e) =>{
+        e.preventDefault();
+
+        const to = square.id;
+
+        if(!from || !to){
+            return;
+        }
+
+        const move = game.move({from: from, to: to, promotion: 'q'});
+
+        if(move){
+            render(game.fen());
+            sendMove({ from: from, to: to, promotion: 'q' }, game.fen());
+
+            window.dispatchEvent(new CustomEvent('position-changed', {
+                detail: {fen: game.fen(), lastMove:{from: from, to: to, promotion: 'q'}}
+            }));
+        }
+        from = null;
+    });
+}
+
+const chessboard = document.querySelector('.chessboard');
+const player_white = document.querySelector('.player-white');
+const player_black = document.querySelector('.player-black');
+const flip_btn = document.querySelector('.flip-board');
+
+flip_btn.addEventListener('click', () => {
+     chessboard.classList.toggle('flipped');
+     player_white.classList.toggle('flipped_player_white');
+     player_black.classList.toggle('flipped_player_black');
 });
